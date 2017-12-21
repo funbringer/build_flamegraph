@@ -1,6 +1,6 @@
 ## build_flamegraph
 
-```bash
+```
 Transform raw profiler files into SVG using FlameGraph
 Examples:
         build_flamegraph                transform perf.data into perf.data.svg
