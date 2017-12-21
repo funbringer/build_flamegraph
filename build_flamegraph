@@ -1,0 +1,197 @@
+#!/usr/bin/bash
+# Dmitry Ivanov, 2017
+
+set -eu
+
+
+check_result_newer() {
+	SRC=$1
+	RES=$2
+
+	# check if RES is newer than SRC
+	if [ -f "$RES" ] && [[ "$RES" -nt "$SRC" ]]; then
+		true
+	else
+		false
+	fi
+}
+
+check_file_ok() {
+	# check that file exists
+	if [ ! -f "$1" ]; then
+		echo File $1 does not exist!
+		exit 2
+	fi
+
+	# check read permission
+	if [[ ! -r "$1" ]]; then
+		echo Cannot read file $1!
+		exit 3
+	fi
+}
+
+
+SHOW_HELP=false
+
+# file options
+FILE=perf.data
+OPEN_SVG=false
+SVG=
+
+# build options
+PROFILER=perf
+RM_TEMP_FILES=false
+FRESH_BUILD=false
+
+
+# parse options
+for i in "$@"; do
+	case $i in
+		# set target profiler
+		--profiler=*)
+		PROFILER="${i#*=}"
+		shift
+		;;
+
+		# specify input file name
+		--in=*)
+		FILE="${i#*=}"
+		shift ;;
+
+		# specify SVG file name
+		--out=*)
+		SVG="${i#*=}"
+		shift
+		;;
+
+		# open SVG once it's ready
+		--open)
+		OPEN_SVG=true
+		shift
+		;;
+
+		# remove temp files at exit
+		--clean)
+		RM_TEMP_FILES=true
+		shift
+		;;
+
+		# disregard existing temp files
+		--fresh)
+		FRESH_BUILD=true
+		shift
+		;;
+
+		# show some help
+		--help)
+		SHOW_HELP=true
+		shift
+		;;
+
+		*)
+		echo "Unknown option '$i'"
+		exit 1
+		;;
+	esac
+done
+
+
+if $SHOW_HELP; then
+	UTIL_NAME=$(basename $0)
+	printf "Transform raw profiler files into SVG using FlameGraph\n"
+	printf "Examples:\n"
+	printf "\t$UTIL_NAME\t\ttransform perf.data into perf.data.svg\n"
+	printf "\t$UTIL_NAME --open\t\tperf.data -> perf.data.svg, open SVG file\n"
+	printf "\t$UTIL_NAME --clean\tperf.data -> perf.data.svg, clean temp files\n"
+	printf "\t$UTIL_NAME --fresh\tperf.data -> perf.data.svg, don't reuse temp files\n"
+	printf "\t$UTIL_NAME --in=abc.data --out=def.svg\ttransform abc.data into def.svg\n"
+	echo
+	printf "Options:\n"
+	printf " --help\t\tshow this message\n"
+	printf " --profiler\tspecify a profiler (perf by default)\n"
+	printf " --in\t\tspecify a file produced by profiler\n"
+	printf " --out\t\tspecify a name of produced SVG file\n"
+	printf " --clean\tremove temp files at exit\n"
+	printf " --fresh\tdon't reuse temp files\n"
+	printf " --open\t\topen SVG file using xdg-open\n"
+	echo
+
+	exit 0
+fi
+
+
+# select a proper stack collapser
+if [ "$PROFILER" == "dtrace" ]; then
+	COLLAPSER=stackcollapse.pl
+else
+	COLLAPSER=stackcollapse-$PROFILER.pl
+fi
+
+# check that stack collapser is available
+if ! command -v $COLLAPSER >/dev/null 2>&1; then
+	echo Cannot find $COLLAPSER
+	exit 4
+fi
+
+
+FILE_STEP_1="$FILE.trace"
+
+# use temp file if it's fresh enough and we're allowed to use cache
+if ! $FRESH_BUILD && check_result_newer "$FILE" "$FILE_STEP_1"; then
+	echo "=> found cached $FILE_STEP_1"
+else
+	# check that input file exists
+	check_file_ok "$FILE"
+
+	case $PROFILER in
+		# handle perf
+		perf)
+		echo "=> extracting stacks from $FILE"
+		perf script -i "$FILE" > "$FILE_STEP_1"
+		;;
+
+		# TODO: add more profilers?
+		# -------------------------
+
+		*)
+		# nothing to do here
+		;;
+	esac
+fi
+
+FILE_STEP_2="$FILE.folded"
+
+# use temp file if it's fresh enough and we're allowed to use cache
+if ! $FRESH_BUILD && check_result_newer "$FILE_STEP_1" "$FILE_STEP_2"; then
+	echo "=> found cached $FILE_STEP_2"
+else
+	echo "=> folding stack samples using $COLLAPSER"
+	$COLLAPSER "$FILE_STEP_1" > "$FILE_STEP_2"
+fi
+
+# set default SVG name, if necessary
+if [ -z $SVG ]; then
+	SVG=$FILE.svg
+fi
+
+echo "=> building flamegraph"
+flamegraph.pl "$FILE_STEP_2" > "$SVG"
+
+# clean temp files
+if $RM_TEMP_FILES; then
+	echo "=> removing temp files"
+	rm -f "$FILE_STEP_1" "$FILE_STEP_2"
+fi
+
+# open SVG using xdg-open
+if $OPEN_SVG; then
+	if command -v xdg-open >/dev/null 2>&1; then
+		echo "=> opening $SVG"
+		xdg-open "$SVG"
+	else
+		echo "Cannot find xdg-open"
+		exit 4
+	fi
+fi
+
+echo "DONE"
