@@ -19,13 +19,13 @@ check_result_newer() {
 check_file_ok() {
 	# check that file exists
 	if [ ! -f "$1" ]; then
-		echo File $1 does not exist!
+		echo File "$1" does not exist!
 		exit 2
 	fi
 
 	# check read permission
 	if [[ ! -r "$1" ]]; then
-		echo Cannot read file $1!
+		echo Cannot read file "$1"!
 		exit 3
 	fi
 }
@@ -97,23 +97,23 @@ done
 
 
 if $SHOW_HELP; then
-	UTIL_NAME=$(basename $0)
-	printf "Transform raw profiler files into SVG using FlameGraph\n"
-	printf "Examples:\n"
-	printf "\t$UTIL_NAME\t\ttransform perf.data into perf.data.svg\n"
-	printf "\t$UTIL_NAME --open\t\tperf.data -> perf.data.svg, open SVG file\n"
-	printf "\t$UTIL_NAME --clean\tperf.data -> perf.data.svg, clean temp files\n"
-	printf "\t$UTIL_NAME --fresh\tperf.data -> perf.data.svg, don't reuse temp files\n"
-	printf "\t$UTIL_NAME --in=abc.data --out=def.svg\ttransform abc.data into def.svg\n"
+	UTIL_NAME=$(basename "$0")
+	printf "Transform raw profiler files into SVG using FlameGraph\\n"
+	printf "Examples:\\n"
+	printf "\\t%s\\t\\ttransform perf.data into perf.data.svg\\n" "$UTIL_NAME"
+	printf "\\t%s --open\\t\\tperf.data -> perf.data.svg, open SVG file\\n" "$UTIL_NAME"
+	printf "\\t%s --clean\\tperf.data -> perf.data.svg, clean temp files\\n" "$UTIL_NAME"
+	printf "\\t%s --fresh\\tperf.data -> perf.data.svg, don't reuse temp files\\n" "$UTIL_NAME"
+	printf "\\t%s --in=abc.data --out=def.svg\\ttransform abc.data into def.svg\\n" "$UTIL_NAME"
 	echo
-	printf "Options:\n"
-	printf " --help\t\tshow this message\n"
-	printf " --profiler\tspecify a profiler (perf by default)\n"
-	printf " --in\t\tspecify a file produced by profiler\n"
-	printf " --out\t\tspecify a name of produced SVG file\n"
-	printf " --clean\tremove temp files at exit\n"
-	printf " --fresh\tdon't reuse temp files\n"
-	printf " --open\t\topen SVG file using xdg-open\n"
+	printf "Options:\\n"
+	printf " --help\\t\\tshow this message\\n"
+	printf " --profiler\\tspecify a profiler (perf by default)\\n"
+	printf " --in\\t\\tspecify a file produced by profiler\\n"
+	printf " --out\\t\\tspecify a name of produced SVG file\\n"
+	printf " --clean\\tremove temp files at exit\\n"
+	printf " --fresh\\tdon't reuse temp files\\n"
+	printf " --open\\t\\topen SVG file using xdg-open\\n"
 	echo
 
 	exit 0
@@ -128,8 +128,8 @@ else
 fi
 
 # check that stack collapser is available
-if ! command -v $COLLAPSER >/dev/null 2>&1; then
-	echo Cannot find $COLLAPSER
+if ! command -v "$COLLAPSER" >/dev/null 2>&1; then
+	echo Cannot find "$COLLAPSER"
 	exit 4
 fi
 
@@ -170,7 +170,7 @@ else
 fi
 
 # set default SVG name, if necessary
-if [ -z $SVG ]; then
+if [ -z "$SVG" ]; then
 	SVG=$FILE.svg
 fi
 
